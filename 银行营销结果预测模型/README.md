@@ -1,778 +1,654 @@
+**数据来源kaggle(uci数据集)： [https://www.kaggle.com/janiobachmann/bank-marketing-dataset/kernels]**
 
-### 分析思路：
->0、数据准备
-1、数据探索
-2、特征工程
-3、建模
-4、RFM分析和用户画像
-### 0、数据准备
-##### 0.1 模块及数据导入
+>目录： 
+0 项目概述 
+一、业务分析 
+　　1.1 基本属性 
+　　1.2 业务联系
+　　1.3 最近一次营销活动
+　　1.4 目标数据
+二、数据准备 
+　　2.1 描述性数据概览 
+　　2.2 数据清洗和过滤
+三、探索性数据分析（EDA）
+　　3.1 数据项分布
+　　　　3.1.1 盈余
+　　　　3.1.2 职业
+　　　　3.1.3 婚姻状态
+　　　　3.1.4 受教育程度
+　　　　3.1.5 有无住房贷款和个人贷款
+　　3.2 是否有定期存款？
+四 多重探究 
+　　4.1 营销活动开展的月份 
+　　4.2 潜在客户的年龄 
+　　4.3 目标群体的职业分析
+五、影响客户定期存款业务的特征相关性分析 
+　　5.1 矩阵相关性分析 
+　　5.2 住房贷款和个人贷款 
+六、分类模型 
+　　6.1 模型概述 
+　　　　6.1.1 模型目标
+　　　　6.1.2 建模过程
+　　6.1.3 决策树
+　　6.1.4 贝叶斯/费舍尔分类
+　　6.1.5 神经网络
+　　6.1.6 SVM
+　　6.1.7 确定最佳模型
+七、营销建议
+　　7.1 营销目标客户群体
+　　7.2 营销策略
+
+### 0 项目概述 
+&emsp;&emsp;本项目的目的是充分挖掘客户的需求、刻画客户群体肖像，并针对营销活动的开展提供建设性的意见建议，从而真正促进推动银行业务的开展。 为此，我们需要对以下加点进行深入挖掘： 
+（1）目标人群：哪一部分人群是精准营销的客户群体，针对这一部分人开展营销推广，将使得活动变得高效、快速； 
+（2）营销渠道：有哪些营销渠道可以采用，例如电话、电视、社交媒体等，如何针对人群设定最佳的渠道策略； 
+（3）定价：具体的业务应该怎样定价以吸引客户？ 
+（4）营销策略：推动业务落地，从而真正推动业务实效化开展。
+&emsp;&emsp;本数据集的营销场景是给客户推荐定期存款业务。
+### 一、业务分析 
 ```
 import pandas as pd
-import numpy as np
+import numpy as np 
 import matplotlib.pyplot as plt
-import seaborn as sns
-
-# 解决坐标轴刻度负号乱码
-plt.rcParams['axes.unicode_minus'] = False
-# 解决中文乱码问题
-plt.rcParams['font.sans-serif'] = ['Simhei']
+import seaborn as sns 
 %matplotlib inline
+plt.rcParams['font.sans-serif']=['SimHei'] #用来正常显示中文标签
+plt.rcParams['axes.unicode_minus']=False #用来正常显示负号
+bank=pd.read_csv('/Users/ranmo//Desktop/数据分析案例/银行营销/bank.csv')
+bank.info()
+bank.head()
 ```
+显示如下：
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-6b9fe292ca213de0.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-17b2e40563d6376f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+一共11162行*17列数据，具体的数据项可以分为三个部分。
+##### 1.1 基本属性 
+- age,年龄
+- job，工作类型（分类：'管理员'，'蓝领'，'企业家'，'女佣'，'管理层'，'退休'，'自雇'，'服务'，'学生' '技术人员'， '失业'， '未知'）
+- marital，婚姻状态（分类：'离婚'，'已婚'，'单身'，'未知';注：'离婚'是指离婚或丧偶）
+- education，教育程度（分类：'初等教育'，'中等教育'，'高等教育'）
+- default，有无违约（分类：'无'，'有'，'未知'）
+- housing，有无住房贷款（分类：'无'，'有'，'未知'）
+- load：有无个人贷款（分类：'无'，'有'，'未知'）
+- balance：盈余（收支平衡）
+##### 1.2 业务联系
+- contact：联系方式（分类：'移动电话'，'座机'）
+- day:上一个联系日（分类：'周一'，'周二'，'周三'，'周四'，'周五'）
+- month：上一个联系月（分类：'一月~十二月'）
+- duration：通话时间，秒（此数据为通话时间，似乎包含等待接通的时间，因为最小值是2s，之后会分析到）
+##### 1.3 最近一次营销活动
+- campain：上一次营销活动和此客户联系的次数
+- pdays：自上一次营销活动联系后，至今的天数
+- previous：上一次营销活动之前和客户累计联系过的次数
+- poutcome：上一次营销的结果（分类：'失败'，'未知'，'其他'，成功'）
+##### 1.4 目标数据
+- deposit：客户是否有定期存款？（分类：'是'，'否'）
+
+### 二、数据准备 
+##### 2.1 描述性数据概览 
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-849adb21a4820f66.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+可以得到以下基本信息：
+- 客户平均年龄约为41岁，最高为95岁， 最低为18岁；
+- 客户平均盈余为1528，但标准差很大，说明此项数据的分布情况很分散。
+- 通话持续时间在2~3881s（1h+）不等，是上一次的通话时间还是累计的通话时间？？是纯通话时间还是包含等待时间？这项数据不敢轻易使用。不过可以确定的是，通话时间越长，肯定说明客户潜力越大，相应的存款也会更多。
+- 上一次营销活动的联系次数在1~63次不等，相应的联系次数越多，则约表明该客户在上一次活动中参与度高；
+- 上一次营销活动后至今的天数为-1~854天，为什么会有-1？是否为数据错误；
+- 上一次营销活动之前和客户累计联系过的次数为0~58次，整体数据偏小。
+##### 2.2 数据清洗和过滤
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-0593ee5dc57854bb.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+因为没有缺失数据，所以不用进行数据填充。
+针对pdays中存在的“-1”，也没有进行清洗。
+### 三、探索性数据分析（EDA）
+##### 3.1 数据项分布
+是否有定期存款是我们特别关注的数据，不过在此之前，我们可以先分析一下各个数据项的分布以及彼此可能存在的联系。
 ```
-df=pd.read_csv(r'D:\Users\wuxiao\Desktop\userlostprob\userlostprob.txt',sep='\t')
-df.head()
+bank.hist(bins=20,figsize=(14,10))
 ```
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-4d1b637cd0c37865.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-7dc650f4e975c5cb.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-###### 0.2 数据项基本信息
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-595c4aadec379be8.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-数据维度为689945*51，label为标签列，1为未流失，0为流失（等会儿再确认），samplied是id列？因为没有重复项，其余有49个特征项，下面将针对部分关键特征进行分析。
-- d:预定日期
-- arrival:入住日期
-- h:访问时间段
-- customer_value_profit：客户近1年价值
-- ctrip_profits：客户价值
-- consuming_capacity：消费能力指数
-- price_sensitive:价格敏感指数
-- avgprice:入住酒店平均价格
-- starprefer:酒店星级偏好
-- ordernum_oneyear:年订单数
-- ordercanceledprecent:订单取消率
-- lasthtlordergap:距离上次预定的时间
-- sid:新客老客特征
-- hotelcr：酒店cr值
-- hoteluv：酒店uv值
-- commentnums：酒店点评数
-- novoters：酒店点评人数
-- cancelrate：酒店取消率
-- lowestprice：酒店最低价
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-b294e2c7fc3f37fd.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-数据存在偏斜，但不平衡程度不大。
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-e02e7642db75b069.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-数据缺失值较多，特别是historyvisit_7ordernum缺失达到88%。
-
-### 一、数据探索
-##### 1.1 预定日期和入住日期
+###### 3.1.1 盈余
+和是否有违约之间的关系:
 ```
-df_d=df.d.value_counts().to_frame().reset_index()
-df_arrival=df.arrival.value_counts().to_frame().reset_index()
-time_table=df_d.merge(df_arrival,how='outer',on='index')
-time_table.fillna(0,inplace=True)
-time_table.set_index('index',inplace=True)
-time_table.sort_index(inplace=True)
+sns.set(style="darkgrid")
+sns.boxplot(x='default',y='balance',hue='deposit',data=bank)
+```
 
-x=time_table.index
-y1=time_table.arrival
-y2=time_table.d
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-f581a305207a1405.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-plt.figure(figsize=(13,5))
-plt.style.use('bmh')
-plt.plot(x,y1,c="r",label='入住人数');
-plt.bar(x,y2,align="center",label='预定人数');
-plt.title('访问和入住人数图',fontsize=20)
-plt.xticks(rotation=45,fontsize=13)
-plt.xlabel('日期');
-plt.ylabel('人数',fontsize=13);
-plt.legend(fontsize=13)
+和职业之间的关系：
 ```
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-a9e62bed2412f436.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-- 520那天预定人数和入住人数都达到峰值，因为情侣会出门“过节”。521之后入住人数就一路走低。后面有两个小突起是周末。
-### 1.2 访问时间段
+sns.boxplot(x='job',y='balance',hue='deposit',data=bank)
+plt.xticks(rotation=90)
 ```
-plt.figure(figsize=(15, 6))
-plt.hist(df.h.dropna(), bins = 50, edgecolor = 'k');
-#因为最多24个时段，所以bins再大的话，只是调整方块的间距了
-plt.title('访问时间段',fontsize=20);
-plt.xticks(fontsize=15)
-plt.yticks(fontsize=15)
-plt.xlabel('访问时间',fontsize=18); 
-plt.ylabel('人数',fontsize=18); 
-```
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-c490848e53abc377.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-- 5点是访问人数最少的时点，这个时候大家都在睡觉。5点过后访问人数开始上升，在晚间9、10点的时间段，访问人数是最多的。
-##### 1.3
-```
-plt.figure(figsize=(12, 4))
 
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-0317239cc1534d2f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+和教育程度之间的关系:
+```
+sns.violinplot(x='education',y='balance',hue='deposit',data=bank)
+```
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-a716ee17b1cbc38b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+可以得知：
+- 有违约记录的人员盈余明显偏低，表明他们的经济状况确实不太好；
+- 有几个职业经济状况更好，退休人员、管理层、自雇和技术人员；
+- 不同教育程度的人员的盈余情况似乎没有明显的偏差，并不像我们想象中的，高等教育者应当具备更高的盈余。
+###### 3.1.2 职业
+职业的数量分布：
+```
+plt.rcParams['figure.figsize']=(10,6)
+sns.set()
+sns.barplot(x='index',y='job',data=bank['job'].value_counts().to_frame().reset_index())
+plt.xticks(rotation=90)
+```
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-c2740f23e1257682.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+职业和年龄的关系：
+```
+sns.boxplot(x='job',y='age',data=bank)
+plt.xticks(rotation=90)
+```
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-9bec333328cd793b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+职业和收入的关系：（发现画图效率有点低，已经开始用tableau混用了）
+```
+#tableau创建计算字段balance status：
+if [balance]<0
+then 'negtive'
+elseif [balance]<3000
+then 'low'
+elseif [balance]<10000
+then 'mid'
+else 'high'
+end
+```
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-943481dd0878b2e9.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+可以得知：
+- 管理人员是最为普遍的职业类型；
+- 退休人员的年龄偏高，而学生最低，umm，跟预期的一致；
+- 管理人员和技术人员是综合盈余最高的人（含有比较多的high——balance比例和数目）。
+###### 3.1.3 婚姻状态
+婚姻状态和盈余的关系：
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-f0874e258f0d2374.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+可以得知：
+- 似乎婚姻状态与盈余没有什么相关性，因为无论是离婚者、单身者、结婚者，在各个盈余段上的分布都比较相似，普遍分布在0~5k内。
+###### 3.1.4 受教育程度
+受教育程度和婚姻状态的关系：
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-1b3e1451e62dd600.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+受教育程度和盈余的关系（这里是求的各种教育程度中negtive、low、mid、high的中值）：
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-77bab09650c41a53.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+可以得知：
+- 不同教育程度的离婚率相差不大，但是教育程度越高，单身率越高；
+- 不同教育程度的盈余状况似乎相差不大，因为集中盈余状态的中值都差不多，包括high_balance状态下的种植情况也差不多（不考虑unknow）
+###### 3.1.5 有无住房贷款和个人贷款
+和盈余的关系：
+```
+plt.rcParams['figure.figsize']=(20,10)
 plt.subplot(121)
-plt.plot(df.index,df.customer_value_profit,linewidth=0.5)
-plt.title('客户近1年价值')
-
+sns.stripplot(x='housing',y='balance',data=bank)
 plt.subplot(122)
-plt.plot(df.index,df.ctrip_profits,linewidth=0.5)
-plt.title('客户价值')
+sns.stripplot(x='loan',y='balance',data=bank)
 ```
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-cdceeb9a514d87b6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-1c399c1e95e0d0ef.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-- 可以看到，“客户近1年价值”和“客户价值”两个特征是非常相关的，都可以用来表示[客户的价值]这么一个特征。同时可以看到，大部分的客户价值都处在0-100这个范围，但是有些客户价值非常大，设置达到了600，这些客户都可以在以后的分析中重点观察，因为他们是非常有“价值”的。
-
-##### 1.4 消费能力指数
+可以得知：
+- 有无住房贷款和个人贷款会直接影响盈余，没有住房贷款和个人贷款的将具有更多的盈余。
+##### 3.2 是否有定期存款？
+有无定期存款是我们最为关心的问题，也是直接影响预测模型精度的关键参数，首先我们可以进行整体的比例分析：
 ```
-plt.figure(figsize=(12, 4))
-
-plt.hist(df.consuming_capacity,bins=50,edgecolor='k')
-plt.xlabel('消费能力指数')
-plt.ylabel('人数')
-plt.title('消费能力指数图')
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-58809838e342e28a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-- 可以看到，消费能力指数的值范围是0-100，相当于对酒店客户(及潜在客户)的一个消费能力进行打分。指数值基本呈现一个正态分布的形状，大部分人的消费能力在30附近。当然，我们同时可以看到，消费能力达到近100的人数也非常多，说明在我们酒店的访问和入住客户中，有不在少数的群体是消费水平非常高的，土豪还是多啊。
-##### 1.5 价格敏感指数
-```
-plt.figure(figsize=(12, 4))
-
-plt.hist(df['price_sensitive'].dropna(), bins = 50, edgecolor = 'k');
-plt.xlabel('价格敏感指数'); 
-plt.ylabel('人数'); 
-plt.title('价格敏感指数图');
+plt.rcParams['figure.figsize']=(10,6)
+f, ax = plt.subplots(1,2)
+plt.suptitle('Information on Term Suscriptions', fontsize=20)
+bank["deposit"].value_counts().plot.pie(ax=ax[0],autopct='%.2f%%',explode=[0,0.25],startangle=25)
+sns.barplot(x='education',y='balance',hue='deposit',data=bank,estimator=lambda x: len(x) / len(bank) * 100)
+ax[1].set(ylabel='(%)')
 ```
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-8e84c00540762a3d.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-ec502148a37e3bd7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-- 价格敏感指数，用来反映客户对价格的一个在意程度。可以看到，除去两头的极值现象，中间的分布属于右偏的正太分布，大部分人的价格敏感指数比较低，也就是说，大部分客户（及潜在客户）是对价格不是很敏感的，并不会一味地去追求低价的酒店和房间，或许，酒店方面不需要在定价方面花费太多的脑筋。当然，我们也会发现，100处的人数也并不少，还是存在一部分的群体对价格极度敏感的，如果是针对这一部分客户，用一些打折优惠的方式会有意想不到的成效。
-
-##### 1.6 入住酒店平均价格
-```
-plt.figure(figsize=(12, 4))
-plt.subplot(121)
-plt.hist(df.avgprice.dropna(),bins=50,edgecolor = 'k')
-plt.xlabel('酒店价格'); 
-plt.ylabel('偏好人数'); 
-plt.title('酒店价格偏好');
-
-plt.subplot(122)
-plt.hist(df[df.avgprice<2000]['avgprice'].dropna(), bins = 50, edgecolor = 'k');
-plt.xlabel('酒店价格'); 
-plt.ylabel('偏好人数'); 
-plt.title('2000元以内酒店偏好');
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-6e9067d504f3c479.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-- 从左图中可以知道，酒店平均价格范围为1-6383元，但实际上酒店价格在1000以上的，选择的人就非常少了，价格在2000元以上的酒店就更加是没有人去选择了，所以右图展示了价格为2000元以下的酒店情况。右图表明，消费者对酒店价格的选择，基本是一个正偏态的分布，大部分人会选择的平均价格在300元左右（基本就是7天、如家这类吧）。
-
-
-##### 1.7 酒店星级偏好
-```
-plt.figure(figsize=(10, 4))
-plt.hist(df.starprefer.dropna(), bins = 50, edgecolor = 'k')
-plt.xlabel('星级偏好程度')
-plt.ylabel('选择人数');
-plt.title('酒店星级偏好')
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-20311794206efa79.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-- 分布有点不规律，尤其是40、60、80、100的分段存在极值情况，剔除这几个分段，星级偏好主要集中在60~80之间。
-
-##### 1.8 用户年订单数
+这里我们似乎可以粗略地得知，受教育程度越高（tertiary），越趋于拥有定期存款，具体的存款业务与各个特征变量之间的关系将在第五章详细分析。
+### 四 多重探究 
+##### 4.1 营销活动开展的月份 
 
 ```
-plt.figure(figsize=(12, 4))
-plt.subplot(121)
-plt.hist(df.ordernum_oneyear.dropna(), bins = 50, edgecolor = 'k');
-plt.xlabel('年订单数'); 
-plt.ylabel('人数'); 
-plt.title('客户年订单数分布');
-
-plt.subplot(122)
-plt.hist(df[df.ordernum_oneyear<100].ordernum_oneyear.dropna(), bins = 50, edgecolor = 'k');
-plt.xlabel('年订单数'); 
-plt.ylabel('人数'); 
-plt.title('年订单数100单内的分布');
+import datetime
+# date=bank.pdays
+now=datetime.datetime.today()
+bank_date=bank
+bank_date['compain_date']=bank_date.pdays.transform(lambda x:now-datetime.timedelta(days=x))
+bank_date['month']=bank_date['compain_date'].transform(lambda x:x.strftime('%m'))
+plt.bar(bank_date['month'].value_counts().index,bank_date['month'].value_counts())
+plt.xlabel('month')
 ```
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-e7bf0ff85bc9d488.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-- 用户年订单数最高可达700+，但是大部分用户的你按订单数集中在0~20之间。
-
-##### 1.9 订单取消率
-```
-plt.figure(figsize=(10, 4))
-plt.hist(df.ordercanceledprecent.dropna(),bins=50,edgecolor = 'k')
-plt.xlabel('订单取消率')
-plt.ylabel('人数')
-plt.title('订单取消率')
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-43018a5103507d84.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-- 存在大量的用户订单取消率为0，也存在部分极端用户订单取消率为1。
-
-##### 1.10 举例上一次预定的时间
-```
-plt.figure(figsize=(10, 4))
-plt.hist(df.lasthtlordergap.dropna(), bins = 50, edgecolor = 'k');
-plt.xlabel('间隔时长'); plt.ylabel('人数'); 
-plt.title('距离上次预定的时间');
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-1b97e9138524806a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 ```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-034bd4cfc3a4893e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-- 从图像上看，比较符合均值为0的正态分布。但是并不知道间隔时长的单位是什么。
-##### 1.11 新老客流失率
-
-```
-s_table=df[['label','sid']]
-s_table['sid']=np.where(s_table['sid']==1,1,0)
-s_table['flag']=1
-s=s_table.groupby('sid').sum().reset_index()
-s['rate']=s['label']/s['flag']                       # flag求和刚好是sid为0和1的个数，label求和刚好是流失人数，相除则为流失率
-
-plt.figure(figsize=(12, 4))
-plt.subplot(121)
-percent=[s['flag'][0]/s['flag'].sum(),s['flag'][1]/s['flag'].sum()]
-color=['steelblue','lightskyblue']
-label=['老客','新访']
-plt.pie(percent,autopct='%.2f%%',labels=label,colors=color)
-plt.title('新老客户占比')
-
-plt.subplot(122)
-plt.bar(s.sid,s.rate,align='center',tick_label=label,edgecolor = 'k')
-plt.ylabel('流失率')
-plt.title('新老客户中的客户流失率')
+data=bank_date.groupby(['month','poutcome']).count().reset_index()
+sns.barplot(x='month',y='age',data=data,hue='poutcome')
 ```
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-22381da7e8525c4d.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-5a410ac230c498c8.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-- 新客大约占5.58%，老客的流失率较新客的流失率更高。
-##### 1.12 酒店转换率
+尽管8月份的营销客户数很多，但是营销结果却存在大量未知的数据。去除这部分数据进行分析：
 ```
-plt.figure(figsize=(10, 4))
-plt.hist(df.hotelcr.dropna(), bins = 50, edgecolor = 'k');
-plt.xlabel('酒店cr值');  
-plt.title('酒店转换率');
+sns.barplot(x='month',y='age',data=data[data['poutcome']!='unknown'],hue='poutcome')
 ```
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-1889ce370ecd6a02.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-8fe6a8a0251fac97.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-- CR本来是网站转化率（conversion rate）是指用户进行了相应目标行动的访问次数与总访问次数的比率，应当是小于1的数据，但这里酒店的cr处在1~2之间，不知道是怎么定义的。
-
-##### 1.13 酒店独立访客
+可以得知：
+- 营销活动主要集中在8月、5月、2月；
+- 实际营销活动较为成功的月份为5月、2月，当然也很有可能是因为营销的次数比较多导致的成功案例增多，而由于8月的营销结果存在大量未知数据因此无法具体分析。
+##### 4.2 潜在客户的年龄 
 ```
-plt.figure(figsize=(10, 4))
-plt.hist(df.hoteluv.dropna(), bins = 50, edgecolor = 'k');
-plt.xlabel('酒店uv值');  
-plt.title('酒店历史独立访客量');
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-a91ab6413c6680bd.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-- PV(访问量)： 即Page View, 即页面浏览量或点击量，用户每次刷新即被计算一次。UV(独立访客)：即Unique Visitor,访问您网站的一台电脑客户端为一个访客。00:00-24:00内相同的客户端只被计算一次。umm...这里的酒店uv值，不太清楚代表的是什么，还是数据源的问题。。
-
-##### 1.14 当前酒店点评数
-```
-plt.figure(figsize=(10, 4))
-plt.hist(df.commentnums.dropna(), bins = 50, edgecolor = 'k');
-plt.xlabel('点评数量');  
-plt.title('酒店点评数');
+plt.subplot(211)
+sns.distplot(bank[bank.deposit=='yes'].age)
+plt.ylabel('deposit=yes')
+plt.subplot(212)
+sns.distplot(bank[bank.deposit=='no'].age)
+plt.ylabel('deposit=no')
 ```
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-5acc46fba535eb40.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-##### 1.15 当前酒店评分人数
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-bebb95bc33316434.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 ```
-plt.figure(figsize=(10, 4))
-plt.hist(df.novoters.dropna(), bins = 50, edgecolor = 'k');
-plt.xlabel('点评人数');  
-plt.title('酒店评分人数');
+data=bank
+data['age_status']=data['age']
+data.age_status=data.age_status
+def agerank(age):
+    if age<20:
+        age_status='teen'
+    elif age>=20 and age<20:
+        age_status='young'
+    elif age>=30 and age<40:
+        age_status='mid'
+    elif age>=40 and age<60:
+        age_status='mid_old'
+    else:age_status='old'
+    return age_status
+data.age_status=data.age_status.transform(lambda x:agerank(x))
+data2=(data.groupby(['age_status','deposit']).age.count()/data.groupby(['age_status']).age.count()).to_frame().reset_index()
+sns.barplot(x='age_status',y='age',data=data2,hue='deposit')
 ```
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-16ff1a1ca263e95d.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-##### 1.16 当前酒店历史订单取消率
-```
-plt.figure(figsize=(10, 4))
-plt.hist(df.cancelrate.dropna(), bins = 50, edgecolor = 'k');
-plt.xlabel('订单取消率');  
-plt.title('酒店订单取消率');
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-ac88d1111a63435c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-##### 1.17 当前酒店可订最低价
-```
-plt.figure(figsize=(10, 4))
-plt.plot(df.lowestprice.dropna())
-plt.xlabel('酒店最低价');  
-plt.title('酒店最低价');
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-5726995d907e2f11.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-### 二、特征工程
-```
-# 为了避免在原数据集上进行修改操作，我们将df复制一份
-df1=df.copy()
-```
-##### 2.1 字符串处理
-原数据中，arrival和d都是字符串格式，可以将其详见得到“提前预定的天数”，并转化为新的数值特征。
-```
-## 增加列
-# 将两个日期变量由字符串转换为日期型格式
-df1['arrival']=pd.to_datetime(df1['arrival'])
-df1['d']=pd.to_datetime(df1['d'])
-# 生成提前预定时间列
-df1['day_advanced']=(df1['arrival']-df1['d']).dt.days
-
-## 删除列
-df1=df1.drop(['d','arrival'],axis=1)
-```
-处理后：
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-c9a8731b9acb9e10.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-
-##### 2.2 异常值处理
-
-把用户价值的两个特征量customer_value_profit、ctrip_profits中的负值按0处理;把delta_price1、delta_price2、lowestprice中的负值按中位数处理。我个人也不知道为什么这么处理，因为里面很多特征并不知道具体含义。
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-1efab94c81d8f4fe.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 ```
-filter1=['customer_value_profit','ctrip_profits']
-filter2=['delta_price1','delta_price2','lowestprice']
-
-for i in filter1:
-    df1.loc[df1[i]<0,i]=0        ##用df1.loc[df1[i]<0][i]=0 会提示无法有点问题，所以还是得用前面的用法
-    
-for i in filter2:
-    temp=df.delta_price1.mean()
-    df1.loc[df1[i]<0,i]=temp    ##用df1.loc[df1[i]<0][i]=0 会提示无法有点问题，所以还是得用前面的用法
-```
-处理后：
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-a47b6560e2eb4dc6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-##### 2.3 缺失值处理
-原数据中只有iforderpv_24h、sid、h、day_advanced这四个是不存在缺失的，其他的44个特征都是存在缺失值的，并且大部分的缺失值都挺多的，因此，我们接下来需要对缺失值进行处理。
-###### 2.3.1 空值删除
-首先设定rate为0.2，如果某行或某列的数据缺失率超过(1-0.2)=0.8，则将其删除：
-```
-# 删除缺失值比例大于80%的行和列
-print('删除空值前数据维度是:{}'.format(df1.shape))
-df1.dropna(axis=0,thresh=df1.shape[1]*0.2,inplace=True)
-df1.dropna(axis=1,thresh=df1.shape[0]*0.2,inplace=True)
-print('删除空值后数据维度是:{}'.format(df1.shape))
+data3=(data[data.poutcome!='unknown'].groupby(['age_status','poutcome']).age.count()/data.groupby(['age_status']).age.count()).to_frame().reset_index()
+sns.barplot(x='age_status',y='age',data=data3,hue='poutcome')
 ```
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-49a124a48e52bf73.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-fefd42a91d0b92d4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-- 空值删除操作后，样本数据减少了100条，不算多，影响不大；特征值少了一个，进一步查看可以得知，historyvisit_7ordernum这一列被删除了，因为这一列的缺失值比例高达88%，数据缺失过多，我们将其删除。
-##### 2.4缺失项补足
-数据项基本满足正态分布或者右偏分布，对正态分布项，采用均值填充较合适，对右偏分布项，采用中位数填充更合适。原数据中，businessrate_pre2、cancelrate_pre、businessrate_pre趋于正态分布，齐豫趋于右偏分布（这一点没有详细考证）。
+可以得知：
+- 20岁以下或60岁以上的群体会更趋于拥有定期存款；
+- 从营销结果来看，20岁以下或60岁以上的群体似乎更容易营销成功，因此可以考虑将他们作为重点的营销对象。
+##### 4.3 目标群体的职业分析
+```
+data['percent']=1
+data4=(data.groupby(['job','deposit']).percent.count()/data.groupby(['job']).percent.count()).to_frame().reset_index()
+data5=(data[data.poutcome!='unknown'].groupby(['job','poutcome']).percent.count()/data.groupby(['job']).percent.count()).to_frame().reset_index()
 
-```
-filter_mean=['businessrate_pre2','cancelrate_pre','businessrate_pre']
-for i in df1.columns:
-    if i in filter_mean:
-        df1[i].fillna(df1[i].mean(),inplace=True)
-    else:
-        df1[i].fillna(df1[i].median(),inplace=True)
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-30f58798deef3581.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-##### 2.5 极值处理
-有些特征明显有异常大和异常小的值，这里分别用1%和99%分位数替换超过上下限的值。
-```
-for i in df1.columns:
-    df1.loc[df1[i]<np.percentile(df1[i],1),i]=np.percentile(df1[i],1)
-    df1.loc[df1[i]>np.percentile(df1[i],99),i]=np.percentile(df1[i],99)
-```
-##### 2.3.4 相关性分析
-```
-# 用户特征提取(分两次提取，为了更好地显示图)
-user_features=['visitnum_oneyear','starprefer','sid','price_sensitive','ordernum_oneyear','ordercanncelednum','ordercanceledprecent','lastpvgap',
-               'lasthtlordergap','landhalfhours','iforderpv_24h','historyvisit_totalordernum','historyvisit_avghotelnum','h',
-               'delta_price2','delta_price1','decisionhabit_user','customer_value_profit','ctrip_profits','cr','consuming_capacity','avgprice']
-# 生成用户特征的相关性矩阵
-corr_mat=df1[user_features].corr()
-
-# 绘制用户特征的相关性矩阵热度图
-plt.figure(figsize=(12,12))
-sns.heatmap(corr_mat, xticklabels=True, yticklabels=True, square=False, linewidths=.5, annot=True, cmap='Blues')
+plt.subplot(211)
+sns.barplot(x='job',y='percent',data=data4,hue='deposit')
+plt.subplot(212)
+sns.barplot(x='job',y='percent',data=data5,hue='poutcome')
 ```
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-baddda4aa8a63b46.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-3ac499195d31cc15.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-可以看出，不少特征存在强相关性：
-- ordernum_oneyear和historyvisit_totalordernum的相关性高达0.93，因为它们都是表示用户1年内的订单数，我们选择其中名字更好识别的ordernum_oneyear作为用户年订单数的特征。
-- decisionhabit_user和historyvisit_avghotelnum相关性达到了0.89，说明也是高度相关的，说明可能用户的决策习惯就是根据用户近3个月的日均访问数来设定的，我们可以通过PCA提取一个主成分用来表示用户近期的日均访问量。
-- customer_value_profit和ctrip_profits这两个特征之间相关性达到了0.85，这两个特征我们在上面的数据可视化中就有提到，表示的是不同时间长度下衡量的客户价值，必然是高度相关的，我们可以用PCA的方法提取出一个主成分来代表客户价值这么一个信息。
-- avgprice和consuming_capacity之间的相关性达到了0.91，同时starprefer与consuming_capacity相关性0.71，starprefer与avgprice相关性0.66，都比较高。这三个特征我们在数据可视化的部分也有提过，它们都代表了消费者的一个消费水平，消费能力越大，愿意或者说是会去选择的酒店的平均价格就会越高，对酒店的星级要求也会越高。可以考虑将这几个变量进行PCA降维。
-- delta_price1和delta_price2的相关性高达0.91，同时和avgprice的相关性也大于0.7，针对这几个指标可以抽象出一个指标叫做“用户偏好价格”。
+可以得出：
+- 学生及退休人员更加可能有定期存款，同时在营销方面取得成功；
+- 蓝领、企业家、服务者、技术员不容易推销成功。
+### 五、影响客户定期存款业务的特征相关性分析 
+根据前文的分析，我们初步知道：
+（1）age，小于20及大于60岁更趋于拥有定期存款
+（2）job，学生和退休者更趋于拥有定期存款
+（3）marital，婚姻状态似乎与业务没有太大联系
+（4）education，受教育程度越高（tertiary），越趋于拥有定期存款
+（5）default，有无违约似乎与业务没有太大联系
+（6）housing，尚未分析
+（7）load，尚未分析
+（8）balance，盈余状态似乎与业务没有太大联系
+（9）contact，无关变量
+（10）day，尚未分析
+（11）month，尚未分析
+（12）duration，尚未分析
+（13）compain，尚未分析
+（14）pdays，尚未分析
+（15）poutcome，尚未分析
+未分析的几个特征变量中，有的是数值型变量，有的是字符串变量，数值变量采用矩阵相关性分析，其余的进行特性分析。
+##### 5.1 矩阵相关性分析 
 ```
-# 用户特征提取(分两次提取)
-user_features=['hotelcr','hoteluv','commentnums','novoters','cancelrate','lowestprice','cr_pre','uv_pre','uv_pre2','businessrate_pre',
-                'businessrate_pre2','customereval_pre2','commentnums_pre','commentnums_pre2','cancelrate_pre','novoters_pre','novoters_pre2',
-                'deltaprice_pre2_t1','lowestprice_pre','lowestprice_pre2','firstorder_bu','historyvisit_visit_detailpagenum']
-# 生成用户特征的相关性矩阵
-corr_mat=df1[user_features].corr()
-
-# 绘制用户特征的相关性矩阵热度图
-plt.figure(figsize=(12,12))
-sns.heatmap(corr_mat, xticklabels=True, yticklabels=True, square=False, linewidths=.5, annot=True, cmap='Blues')
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-51bf024c25c5ea7b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-- novoters和commentnums相关性高达0.99，前者是当前点评人数，后者是当前点评数，可以抽象出“酒店热度”指标；
-- novoters_pre和commentnums_pre相关性高达0.99，可以抽象出“24小时内浏览次数最多的酒店热度”指标；
-- novoters_pre2和commentnums_pre2相关性高达0.99，可以抽象出“24小时内浏览酒店平均热度”指标；
-- cancelrate和hoteluv相关性0.76，和commentnums相关性0.84，和novoters相关性0.85，酒店的“人气”高，说明访问的频繁，历史取消率可能也会高一点。
-- uv_pre和uv_pre2相关性高达0.9；businessrate_pre和businessrate_pre2相关性高达0.84；commentnums_pre和commentnums_pre2相关性高达0.82；novoters_pre和novoters_pre2相关性高达0.83。这些指标之间都是“浏览最多的酒店的数据”和“浏览酒店的平均数据”的关系，相关性高是正常的，暂时不用抽象出其他的指标。
-
-##### 2.6 降维
-```
-c_value=['customer_value_profit','ctrip_profits']                   # 用户价值
-consume_level=['avgprice','consuming_capacity']                     # 用户消费水平
-price_prefer=['delta_price1','delta_price2']                        # 用户偏好价格
-hotel_hot=['commentnums','novoters']                                # 酒店热度
-hotel_hot_pre=['commentnums_pre','novoters_pre']                    # 24小时内浏览次数最多的酒店热度
-hotel_hot_pre2=['commentnums_pre2','novoters_pre2']                 # 24小时内浏览酒店的平均热度
-
-from sklearn.decomposition import PCA
-pca=PCA(n_components=1)
-df1['c_value']=pca.fit_transform(df1[c_value])
-df1['consume_level']=pca.fit_transform(df1[consume_level])
-df1['price_prefer']=pca.fit_transform(df1[price_prefer])
-df1['hotel_hot']=pca.fit_transform(df1[hotel_hot])
-df1['hotel_hot_pre']=pca.fit_transform(df1[hotel_hot_pre])
-df1['hotel_hot_pre2']=pca.fit_transform(df1[hotel_hot_pre2])
-
-df1.drop(c_value,axis=1,inplace=True)
-df1.drop(consume_level,axis=1,inplace=True)
-df1.drop(price_prefer,axis=1,inplace=True)
-df1.drop(hotel_hot,axis=1,inplace=True)
-df1.drop(hotel_hot_pre,axis=1,inplace=True)
-df1.drop(hotel_hot_pre2,axis=1,inplace=True)
-df1.drop('historyvisit_totalordernum',axis=1,inplace=True)  ###把重复的一列删了
-df1.drop('sampleid',axis=1,inplace=True)   ###把id列删了
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
+data5=bank
+data5['deposit']=LabelEncoder().fit_transform(data5['deposit'])
+#把deposit转化为数值变量
+corrmat=data5.corr()
+plt.figure(figsize=(15,10))
+sns.heatmap(corrmat,annot=True,cmap=sns.diverging_palette(220, 20, as_cmap=True))
 ```
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-72cce6afaebac805.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-c617788cb9a60d3e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-##### 2.7 数据标准化
+可以看出，这几个值当中与业务最为相关的就是duration通话时间了，进一步分析：
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-de66dc3b4a6e95af.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+可以看出，duration的值主要集中在0~600之间，随着duration越大，开设定期存款的比例越高。
 ```
-# 数据标准化
-from sklearn.preprocessing import StandardScaler
+data5['duration_status']=(data5.duration-data5.duration.mean())
+def dur_status(duration_status):
+    if duration_status>=0:
+        a='above_average'
+    else:a='below_average'
+    return a
+data5['duration_status']=data5['duration_status'].transform(lambda x:dur_status(x))
+percentage=(data5.groupby(['duration_status','deposit']).duration.count()/data5.groupby(['duration_status']).duration.count()).to_frame().reset_index()
+percentage['percent']=percentage.duration
+sns.barplot(x='duration_status',y='percent',data=percentage,hue='deposit',)
 
-y=df1['label']
-x=df1.drop('label',axis=1)
-
-scaler = StandardScaler()
-X= scaler.fit_transform(x)   #先用fit求得训练数据的标准差和均值,再用transform将数据转化成
 ```
 
-几种标准化的方法：
-[https://www.jianshu.com/p/fa73a07cd750](https://www.jianshu.com/p/fa73a07cd750)
-考虑到基本都是负荷正态分布或者偏态分布的，所以这里是标准化为标准正态分布，否则的话，采用min-max标准化等其他方法可能会更好。
-标准化后的数据形态：
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-fcd95fa52eac61ec.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-14c93c1ae4ca73b2.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-### 三、建模
-先拆分训练集和数据集
+通话时间的均值为375s，以此作为分解，可以看到通话时间高于均值的，开办业务的比例为77.3%，低于均值的，仅为31.6%。
+可以得知：
+- 随着通话时间越长，表明用户开办业务的成功率越高。
+##### 5.2 住房贷款和个人贷款 
 ```
+data6=bank[['deposit','housing','loan']]
+data6['deposit']=LabelEncoder().fit_transform(data5['deposit'])
+data6['housing']=LabelEncoder().fit_transform(data6['housing'])
+data6['loan']=LabelEncoder().fit_transform(data6['loan'])
+corrmat=data6.corr()
+plt.figure(figsize=(15,10))
+sns.heatmap(corrmat,annot=True,cmap=sns.diverging_palette(220, 20, as_cmap=True))
+```
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-7cc579383d0c7381.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+可以得知：
+- 整体来说，是否有定期存款业务和住房贷款、个人贷款的相关性都不大，或者说成负的弱相关关系（一般来说，0-0.09为没有相关性，0.3-弱，0.1-0.3为弱相关，0.3-0.5为中等相关，0.5-1.0为强相关。）；
+- 定期存款业务和住房贷款的相关性系数为-0.2，可以认为拥有住房贷款，则比较不容易开设定期存款业务。
+### 六、分类模型 
+##### 6.1 模型概述 
+###### 6.1.1 模型目标
+构建一个分类模型，能够预测是否开通定期存款业务，采用的算法有：
+（1）决策树；
+（2）贝叶斯/费舍尔分类；
+（3）神经网络；
+（4）SVM
+
+###### 6.1.2 建模过程
+- 分层抽样:
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-5179b23e13cd3dd5.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+因为正负种类比例趋于1：1，所以不做处理
+- 数据格式处理：
+把几个字符串变量处理为字符变量：
+```
+bank=pd.read_csv('/Users/ranmo//Desktop/数据分析案例/银行营销/bank.csv')
+bank_spss=bank
+
+bank_spss['job']=LabelEncoder().fit_transform(bank_spss['job'])
+bank_spss['marital']=LabelEncoder().fit_transform(bank_spss['marital'])
+bank_spss['education']=LabelEncoder().fit_transform(bank_spss['education'])
+bank_spss['default']=LabelEncoder().fit_transform(bank_spss['default'])
+bank_spss['housing']=LabelEncoder().fit_transform(bank_spss['housing'])
+bank_spss['loan']=LabelEncoder().fit_transform(bank_spss['loan'])
+bank_spss['contact']=LabelEncoder().fit_transform(bank_spss['contact'])
+bank_spss['month']=LabelEncoder().fit_transform(bank_spss['month'])
+bank_spss['poutcome']=LabelEncoder().fit_transform(bank_spss['poutcome'])
+bank_spss['deposit']=LabelEncoder().fit_transform(bank_spss['deposit'])
+
+bank_spss.to_csv(path_or_buf='/Users/ranmo//Desktop/数据分析案例/银行营销/bank_spss.csv')
+```
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-f77e2c9b0d258b97.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+- 特征处理，特征降维、特征缩放及连续值处理：
+首先是特征维度上面，只有16+1个变量，维度不算大，因此不做降维；
+特征缩放我没做，理论上肯定是要反复验证并确定缩放比例的；
+连续值处理直接交给SPSS了，我人工就不作处理了。。。
+ps,特征缩放本质上就是理清各个特征之间的关系，比如说上一次营销活动的成功与否与是否有存款业务没有什么关系？那么在分类过程中是否也要考虑这些变量？。。。umm，我没做缩放，肯定会影响模型精度的。。。
+- 建立模型，交叉验证模型精度
+要输出分类结果以及置信度
+交叉验证（选定70%训练集、30%测试集）：
+（1）每一次验证，会确定一个模型（参数不一样），同时输出一组confusion matrix（混淆矩阵/误差矩阵）以及ROC曲线，并确定模型的最佳分类阈值；
+（2）交叉验证完毕后，得到最终的模型精度，confusion matrix和roc是加权综合的么？
+（3）最终是利用全部样本构建分类预测模型。
+- 比较确定最佳模型
+利用各个模型交叉验证后的精度确定最佳模型，并利用全部样本构建分类模型。
+###6.2 决策树
+- 决策树模型选的CHAID模型
+[https://blog.csdn.net/sjpljr/article/details/70169159](https://blog.csdn.net/sjpljr/article/details/70169159)
+[https://www.jianshu.com/p/807b2c2bfd9b](https://www.jianshu.com/p/807b2c2bfd9b)
+不同于C4.5、C5.0，CHAID模型采用卡方校验来分类。
+- 交叉验证
+因为参数设置上没有验证的次数，和样本比例选择，所以不太确定spss的交叉验证机制，最后选择的分割样本。
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-164cdb26e502e5c6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+- 分类结果分析
+（图太大就不放了）
+
+决策树的第一层是：duration
+决策树的第二层主要是：contact、poutcome、month
+决策树第三层主要是：marital、housing、month、pdays、days
+
+**这表明：duration、contact、month、poutcome、pdays、days都是与上一次营销活动以及近期联系紧密相关的参数，这一点上很好解释，即联系越频繁，表明其本身就是我们的优质客户和目标营销群体**
+
+- 置信度分析
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-30ac3938d637caf4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+理论上应该是根据最底层子节点上的分类情况进行置信度判定，比如节点40上有163个正类，2个父类，但是全部被认定为正类，则置信度为98.8%。
+- 模型精度分析
+（1）混淆矩阵
+软件给出的这个不是混淆矩阵哈
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-38b6cbcb9afcae38.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+实际的混淆矩阵是:
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-259120f4ee08ae26.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+为什么用样本构建的分类模型也存在混淆矩阵的原因是因为，没有完全拟合（CHAID构建的决策树最大深度为3，所以拟合有限）
+（2）ROC曲线
+一般来说，决策树不存在ROC曲线，因为不存在分类阈值的选取问题。如果一定要有ROC曲线的话，那就是通过调整树的最大深度，以及熵增、基尼值改变的最小值来调整拟合程度，最终得到一条ROC曲线，但是对决策树似乎没有什么意义。
+
+**ps:
+spss中画ROC曲线。。接受的输入各个样本的类别以及阈值，然后根据不断调整阈值，来求得ROC的X和Y：
+[http://www.sohu.com/a/144925905_165070](http://www.sohu.com/a/144925905_165070)**
+
+### 6.3 贝叶斯/费舍尔分类
+
+- 费舍尔判别
+费舍尔判别和费舍尔分类还不一样。
+费舍尔分类参见[https://blog.csdn.net/luanpeng825485697/article/details/78769233](https://blog.csdn.net/luanpeng825485697/article/details/78769233)
+费舍尔判别参见[https://www.jianshu.com/p/2d8a6fa92bb5](https://www.jianshu.com/p/2d8a6fa92bb5)
+所以SPSS自带的很多方法都是传统统计学那一套？《挖掘理论》中的贝叶斯实际是不完全贝叶斯（因为没有求取到真是的条件概率），而费舍尔求取的是真是的条件概率，这反而是传统统计学中的贝叶斯分类。
+然而SPSS没有贝叶斯判别，只有费舍尔判别，基础理论是对于有N维特征向量的输入（这里是16维，还有一位是分类标志），找到X1、X2、X3。。。X16来使得整体的组内方差最小，组间方差最大。
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-357cd11155cc7e5b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-e128709ba089d5e1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+- 交叉验证
+没有交叉验证的选项，他是将所有数据用来构造费舍尔判别器，最后再对所有数据进行误差校验。
+当然肯定也可以自己对表数据进行分类，确定训练集和测试集，训练好了之后保存模型用测试集进行测试，但是整体来说用模型就是不够灵活。。。
+- 分类结果分析
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-0a22c82947ebbad8.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+会给出在0组和1组的概率（置信度），在原始表中也会生成新的列给出概率。
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-e7fef1c099ea6c3a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+- 模型精度分析
+（1）混淆矩阵
+
+![](https://upload-images.jianshu.io/upload_images/18032205-226a149a3798d99c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+（2）ROC曲线
+费舍尔应该是判定当处在组1的概率大于处在组0的概率是，将其分为组1，所以也可以理解为：阈值=（处在组1的概率）-（处在组2的概率），当阈值>0时，则为组1，否在为组1。
+因为在spss中画ROC曲线只接受两个变量，一个是正确的状态变量，一个是特征量（不同场景不同考虑，这里是（处在组1的概率-组0的概率））。
+所以在spss中额外创建一列（“转换→计算变量”），再画ROC曲线：
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-df7a2bddf8b4540f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+将实际ROC数据拷贝出来处理，求取“尤登指数”：
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-0698cc2b1517836f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-ddef35f75537662b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+可以知道：
+- 首先尤登指数肯定是处在0附近的，本身模型就是求取了这样的一个分类器来保证分类最优；
+- 实际的尤登指数是-0.058左右，并不是0。可以理解，因为模型本身目标可能是实现precision更高，但是尤登指数与recall又相关，所以两者本身概念就有差异。
+
+### 6.4 神经网络
+- 模型
+神经网络有RBF模型和多层感知器，SPSS都可以选择。多层感知器就最多有三层隐藏函数可以完成任何分析，而多层感知器求解权重采用的是BP算法，所以现在一般称为BP神经网络，两者是两个不同方向上的概念，一个是层次，一个是算法，但是又互相指代。多层感知器的求解算法可以参考之前文档的分析。
+RBF和BP当然各有各的优点，以后需要再进行详细研究，需要知道的是，RBF在算法计算上不是再用BP来求解连接权重了，求解的参数有3个：基函数的中心、方差以及隐含层到输出层的权值，所以从输入层到隐藏层已经没有权重概念了，而是求解基函数的参数，具体求解流程也可以之后再研究。
+还有一点就是RBF径向基函数指的是任意一个满足Φ（x）=Φ(‖x‖)特性的函数Φ都叫做径向基函数。高斯核函数通常被作为RBF函数，但是实际上还有其他函数（当然下面这篇文章的各种激活函数并不全是基函数哈，有的是BP适用的函数）：
+
+[https://baijiahao.baidu.com/s?id=1582399059360085084&wfr=spider&for=pc](https://baijiahao.baidu.com/s?id=1582399059360085084&wfr=spider&for=pc)
+
+下面这个是BP的激活函数，S型和双曲正切是经常用的：
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-831a77f0d6f1ec9b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+下面这个是RBF的激活函数：
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-8f6161262060e4be.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+输出层是不能选择的，默认是恒等式；隐藏层是两个学名，一个是softmax。
+反正就是采用软件很不灵活，不能够自行选用函数。
+还有就是最后的输出变量，本来想将输出层设置为2个神经元，分别为属于两个分类的概率，总和为1。但是这里识别到分类变量是离散值（0和1），所以自动会输出三个值：
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-60e712297fa42187.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+判断依据就是，预测为1的概率大于为0的概率的时候，则预测值为1。
+
+PS，如果输出变量是连续值的话，SPSS会认为是做预测，从而只输出一个值，就是预测的值。
+
+最后是采用BP跑了一下。
+
+- 分类结果分析
+就输出三个值：
+分类结果、预测为1的概率、预测为0的概率。
+- 置信度分析
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-3c4e9b3a73f9bf20.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+- 模型精度分析
+（1）混淆矩阵
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-ff32dbeef8310474.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+转化一下：
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-da929fd881a64cbc.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+（2）ROC曲线
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-a47b81425d58429c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+### 6.5 SVM
+SPSS statistics没有SVM，只有SPSS modeler才有。。umm
+用python掉包跑一下。
+- 模型
+```
+from sklearn import svm
 from sklearn import model_selection
+x,y=np.split(bank_spss,(16,),axis=1)
+x_train, x_test, y_train, y_test = model_selection.train_test_split(x, y,train_size=0.7)
+clf = svm.SVC(C=0.8, kernel='rbf', gamma='auto_deprecated', decision_function_shape='ovr')
+clf.fit(x_train, y_train)
+print("SVM-输出训练集的准确率为：",clf.score(x_train,y_train))
+print("SVM-输出测试集的准确率为：",clf.score(x_test,y_test))
+```
+显示：
 
-X_train,X_test,y_train,y_test = model_selection.train_test_split(X,y,test_size= 0.2,random_state=1)
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-85a8659d2751269f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+因为训练集的准确率为1，所以最开始是猜测过拟合了，导致测试集准确率这么低。。结果我调整模型的C和gamma，得出的测试集的准确率都是一样的，然后我一查看结果，发现所有的输入都预测为0，把所有变量做了归一化处理：
+
+```
+#做归一化
+bank_spss_new=bank_spss
+for i in bank_spss_new.columns:
+    bank_spss_new[i]=bank_spss_new[i]/(bank_spss_new[i].max()-bank_spss_new[i].min())
+
+
+x,y=np.split(bank_spss_new,(16,),axis=1)
+x_train, x_test, y_train, y_test = model_selection.train_test_split(x, y,train_size=0.7)
+clf = svm.SVC(C=0.8, kernel='rbf', gamma='auto_deprecated', decision_function_shape='ovr')
+clf.fit(x_train, y_train)
+print("SVM-输出训练集的准确率为：",clf.score(x_train,y_train))
+print("SVM-输出测试集的准确率为：",clf.score(x_test,y_test))
 ```
 
-##### 3.1 逻辑回归
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-6da45e16273fb8ea.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+- 分类结果分析
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-863e81d031c239f3.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-65655e61e3369d15.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+有两个关键性的结果参数，一个是clf.decision_function显示的是到两个分类的距离，为正就分为1类，为负就分为0类，clf.predict显示的就是分类结果。（因为分割平面是wx+b=0啊）
+
+- 置信度分析
+
+clf.decision_function给出了距离分类平面的距离，理论上距离越远，则表示在某一类的概率越大啊，因为离分界面远的话，不容易发生误分类。
+- 模型精度分析
+
+（1）混淆矩阵
 ```
-from sklearn.linear_model import LogisticRegression
-from sklearn import metrics
 from sklearn.metrics import classification_report
-
-lr = LogisticRegression()                                        # 实例化一个LR模型
-lr.fit(X_train,y_train)                                          # 训练模型
-y_prob = lr.predict_proba(X_test)[:,1]                           # 预测1类的概率
-y_pred = lr.predict(X_test)                                      # 模型对测试集的预测结果
-fpr_lr,tpr_lr,threshold_lr = metrics.roc_curve(y_test,y_prob)    # 获取真阳率、伪阳率、阈值
-auc_lr = metrics.auc(fpr_lr,tpr_lr)                              # AUC得分
-score_lr = metrics.accuracy_score(y_test,y_pred)                 # 模型准确率
-
-
-print('模型准确率为:{0},AUC得分为:{1}'.format(score_lr,auc_lr))
-print('  ')
+y_pred=clf.predict(x_test)
 print(classification_report(y_test, y_pred, labels=None, target_names=None, sample_weight=None, digits=2))
 ```
 
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-ab36eb60c7d97754.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![image.png](https://upload-images.jianshu.io/upload_images/18032205-75c03bf9a1083491.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-- 此时的模型准确率是以分为0类、1类的概率大小进行分类的，所以理论上通过调整分类阈值，可以达到更高的精度。
-- 在不对阈值进行调整情况下，从混淆矩阵中可以看出，1类的recall偏小，表明更容易被分为0类，这种情况对应的是ROC曲线中的左下方低点，分为0类的阈值应该调大，分为1类的阈值应该调低。
+（2）ROC曲线
+SVM画ROC可能没有什么意义，如果要画的话，那就是通过调整C和gamma的值来取一个适合的模型精度。。
+### 6.6 确定最佳模型
+从模型的整体预测精度来说
+决策树：0.807（测试集）
+费舍尔判别：0.793（全部集）
+BP神经网络：0.700（测试集）
+svm：0.777（测试集）
+ 决策树胜出！
 
-
-##### 3.2 朴素贝叶斯
-
-```
-from sklearn.naive_bayes import GaussianNB
-from sklearn import metrics
-from sklearn.metrics import classification_report
-
-gnb = GaussianNB()                                                # 实例化一个LR模型
-gnb.fit(X_train,y_train)                                          # 训练模型
-y_prob = gnb.predict_proba(X_test)[:,1]                           # 预测1类的概率
-y_pred = gnb.predict(X_test)                                      # 模型对测试集的预测结果
-fpr_gnb,tpr_gnb,threshold_gnb = metrics.roc_curve(y_test,y_prob)    # 获取真阳率、伪阳率、阈值
-auc_gnb = metrics.auc(fpr_gnb,tpr_gnb)                              # AUC得分
-score_gnb = metrics.accuracy_score(y_test,y_pred)                 # 模型准确率
-
-
-print('模型准确率为:{0},AUC得分为:{1}'.format(score_gnb,auc_gnb))
-print('  ')
-print(classification_report(y_test, y_pred, labels=None, target_names=None, sample_weight=None, digits=2))
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-83ebd280ee01b647.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-查看了一下预测的分为1类和0类的概率：
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-076438d2a2d8c774.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-所以这里的贝叶斯概率并不是真实概率（真实概率为所有独立变量概率的成绩，理论上是一个很小很小的值，而不会是一个mean值在0.5左右的值）。
-
-##### 3.3 支持向量机
-```
-from sklearn.svm import SVC
-from sklearn import metrics
-from sklearn.metrics import classification_report
-
-svc = SVC(kernel='rbf',C=1,max_iter=100).fit(X_train,y_train)
-y_prob = svc.decision_function(X_test)                              # 决策边界距离
-y_pred = svc.predict(X_test)                                        # 模型对测试集的预测结果
-fpr_svc,tpr_svc,threshold_svc = metrics.roc_curve(y_test,y_prob)     # 获取真阳率、伪阳率、阈值
-auc_svc = metrics.auc(fpr_svc,tpr_svc)                              # 模型准确率
-score_svc = metrics.accuracy_score(y_test,y_pred)
-
-print('模型准确率为:{0},AUC得分为:{1}'.format(score_gnb,auc_gnb))
-print('  ')
-print(classification_report(y_test, y_pred, labels=None, target_names=None, sample_weight=None, digits=2))
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-8c8c223aef4ab543.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-- 不设置max_iter会陷入死循环，说明一直无法找到最优解平面。而且无论是rbf核还是多项式核，整体的预测精度都很低。
-##### 3.4 决策树
-```
-from sklearn import tree
-from sklearn import metrics
-from sklearn.metrics import classification_report
-
-dtc = tree.DecisionTreeClassifier()                              # 建立决策树模型
-dtc.fit(X_train,y_train)                                         # 训练模型
-y_prob = dtc.predict_proba(X_test)[:,1]                          # 预测1类的概率
-y_pred = dtc.predict(X_test)                                     # 模型对测试集的预测结果 
-fpr_dtc,tpr_dtc,threshod_dtc= metrics.roc_curve(y_test,y_prob)   # 获取真阳率、伪阳率、阈值               
-auc_dtc = metrics.auc(fpr_dtc,tpr_dtc)                           # AUC得分
-score_dtc = metrics.accuracy_score(y_test,y_pred)                # 模型准确率
-
-print('模型准确率为:{0},AUC得分为:{1}'.format(score_dtc,auc_dtc))
-print('  ')
-print(classification_report(y_test, y_pred, labels=None, target_names=None, sample_weight=None, digits=2))
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-2ec6c81b25d3f4f6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-##### 3.5 随机森林
-```
-from sklearn.ensemble import RandomForestClassifier
-from sklearn import metrics
-from sklearn.metrics import classification_report
-
-rfc = RandomForestClassifier()                                     # 建立随机森林分类器
-rfc.fit(X_train,y_train)                                           # 训练随机森林模型
-y_prob = rfc.predict_proba(X_test)[:,1]                            # 预测1类的概率
-y_pred=rfc.predict(X_test)                                         # 模型对测试集的预测结果
-fpr_rfc,tpr_rfc,threshold_rfc = metrics.roc_curve(y_test,y_prob)   # 获取真阳率、伪阳率、阈值  
-auc_rfc = metrics.auc(fpr_rfc,tpr_rfc)                             # AUC得分
-score_rfc = metrics.accuracy_score(y_test,y_pred)                  # 模型准确率
-
-print('模型准确率为:{0},AUC得分为:{1}'.format(score_rfc,auc_rfc))
-print('  ')
-print(classification_report(y_test, y_pred, labels=None, target_names=None, sample_weight=None, digits=2))
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-bd9e4edf1bf80dbb.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-##### 3.6 模型比较
-```
-plt.style.use('bmh')
-plt.figure(figsize=(13,10))
-
-plt.plot(fpr_lr,tpr_lr,label='lr: {0:.3f}'.format(score_lr))                             # 逻辑回归
-plt.plot(fpr_gnb,tpr_gnb,label='gnb:{0:.3f}'.format(score_gnb))                          # 朴素贝叶斯模型
-plt.plot(fpr_svc,tpr_svc,label='svc:{0:.3f}'.format(score_svc))                                             # 支持向量机模型
-plt.plot(fpr_dtc,tpr_dtc,label='dtc:{0:.3f}'.format(score_dtc))                          # 决策树
-plt.plot(fpr_rfc,tpr_rfc,label='rfc:{0:.3f}'.format(score_rfc))                          # 随机森林
-
-plt.legend(loc='lower right',prop={'size':25})
-plt.xlabel('误诊率')
-plt.ylabel('灵敏度')
-plt.title('ROC曲线')
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-5094238466f4064e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-随机森林胜出！
-
-### 四、RFM分析和用户画像
-##### 4.1 RFM分析
-RFM模型，即为：
-R(Rencency):最近一次消费
-F(Frequency):消费频率
-M(Monetary):消费金额
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-3f56df91f2d1520e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-在本案例中，我们选择lasthtlordergap（距离上次下单的时长）、ordernum_oneyear（用户年订单数）、consume_level（用户消费水平）分别作为R、F、M的值，对我们的用户群体进行聚类。
-```
-rfm = df1[['lasthtlordergap','ordernum_oneyear','consume_level']]  #consume_level是PCA后的特征变量
-
-#归一化
-from sklearn.preprocessing import MinMaxScaler
-scaler = MinMaxScaler()
-scaler.fit(rfm)
-rfm = pd.DataFrame(scaler.transform(rfm),columns=['recency','frequency','monetary'])
-
-# 分箱
-rfm['R']=pd.qcut(rfm["recency"], 2)
-rfm['F']=pd.qcut(rfm["frequency"], 2)
-rfm['M']=pd.qcut(rfm["monetary"], 2)
-
-# 根据分箱情况编码
-from sklearn.preprocessing import LabelEncoder
-
-#从0开始编码的，所以这里直接编码是可以的
-rfm['R']=LabelEncoder().fit(rfm['R']).transform(rfm['R'])      #这里需要注意，R为距离上次下单的市场，越小则代表价值越高，所以这一点是反的
-rfm['F']=LabelEncoder().fit(rfm['F']).transform(rfm['F'])
-rfm['M']=LabelEncoder().fit(rfm['M']).transform(rfm['M'])
-
-def get_label(r,f,m):
-    if (r==0)&(f==1)&(m==1):
-        return '高价值客户'
-    if (r==1)&(f==1)&(m==1):
-        return '重点保持客户'
-    if((r==0)&(f==0)&(m==1)):
-        return '重点发展客户'
-    if (r==1)&(f==0)&(m==1):
-        return '重点挽留客户'
-    if (r==0)&(f==1)&(m==0):
-        return '一般价值客户'
-    if (r==1)&(f==1)&(m==0):
-        return '一般保持客户'
-    if (r==0)&(f==0)&(m==0):
-        return '一般发展客户'
-    if (r==1)&(f==0)&(m==0):
-        return '潜在客户'
-
-def RFM_convert(df):
-    df['Label of Customer']=df.apply(lambda x:get_label(x['R'],x['F'],x['M']),axis=1)
-    
-    df['R']=np.where(df['R']==0,'高','低')
-    df['F']=np.where(df['F']==1,'高','低')
-    df['M']=np.where(df['M']==1,'高','低')
-    
-    return df[['R','F','M','Label of Customer']]
-
-rfm0=RFM_convert(rfm)
-rfm0.head(10)
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-212bd644f7dcb203.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-各类客户的占比：
-```
-temp=rfm0.groupby('Label of Customer').size()
-
-plt.figure(figsize=(12,12))
-colors=['deepskyblue','steelblue','lightskyblue','aliceblue','skyblue','cadetblue','cornflowerblue','dodgerblue']
-plt.pie(temp,radius=1,autopct='%.1f%%',pctdistance=0.75,colors=colors)
-plt.pie([1],radius=0.6,colors='w')   ##可以用这种方式画空心
-plt.title('客户细分情况')
-plt.legend(temp.index)
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-4c3430dca4847861.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-- 潜在客户占比达12。3%，这类客户是rmf指标均不是很好的客户，有待开发；
-- 高价值客户11%,重点保持客户10.1%，重点发展客户7%，这是要重点关注的客户群体。
-
-##### 4.2 用户画像
-其实我们并不想将用户分的这么细，并且我们其实有挺多的用户行为特征数据，所以也并不想仅用RFM这3个指标进行分析。所以，我们接下来用K-Means聚类的方法将用户分为3类，观察不同类别客户的特征。
-```
-# 选取出几个刻画用户的重要指标
-user_feature = ['decisionhabit_user','ordercanncelednum','ordercanceledprecent','consume_level','starprefer','lasthtlordergap','lastpvgap','h','sid',
-                'c_value','landhalfhours','price_sensitive','price_prefer','day_advanced','historyvisit_avghotelnum','ordernum_oneyear']
-user_attributes = df1[user_feature]
-user_attributes.head()
-
-# 数据标准化
-from sklearn.preprocessing import StandardScaler
-
-scaler = StandardScaler()
-scaler.fit(user_attributes)
-
-user_attributes = scaler.transform(user_attributes)
-```
-```
-from sklearn.cluster import KMeans
-
-Kmeans=KMeans(n_clusters=3)                                                     # 建立KMean模型
-Kmeans.fit(user_attributes)                                                     # 训练模型
-k_char=Kmeans.cluster_centers_                                                  # 得到每个分类的质心
-personas=pd.DataFrame(k_char.T,index=user_feature,columns=['0类','1类','2类'])  # 用户画像表
-
-plt.figure(figsize=(5,10))
-sns.heatmap(personas, xticklabels=True, yticklabels=True, square=False, linewidths=.5, annot=True, cmap='Blues')
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-661b96e2dc5847fb.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-- 2类用户的R（lasthtlordergap）为-0.17非常小（R越小越好，这里是反的），F（ordernum_oneyear）为1.1比较高了，M（consume_level）为1.3也几乎是最高的。很明显，2类客户为我们的“高价值客户”；而0类中几乎都是白格子，无论是客户价值还是消费水平值都是最低的，很明显，这一类我们将其归为“低价值客户”；剩下的1类我们将其称为“中等群体”。
-```
-plt.figure(figsize=(9,9))
-
-class_k=list(Kmeans.labels_)                          # 每个类别的用户个数
-percent=[class_k.count(1)/len(user_attributes),class_k.count(0)/len(user_attributes),class_k.count(2)/len(user_attributes)]   # 每个类别用户个数占比
-
-fig, ax = plt.subplots(figsize=(10,10))
-colors=['aliceblue','steelblue','lightskyblue']
-types=['中等群体','低价值用户','高价值用户']
-ax.pie(percent,radius=1,autopct='%.2f%%',pctdistance=0.75,colors=colors,labels=types)
-ax.pie([1], radius=0.6,colors='w')
-```
-
-![image.png](https://upload-images.jianshu.io/upload_images/18032205-3e9da431f7a96d91.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-- 可以看到，“低价值客户”的占比非常之大，中等人群占比最小。
-##### 4.3 用户画像分析
-- 高价值用户分析（2类用户）
-消费水平高，客户价值大，追求高品质，对酒店星级要求高，访问频率和预定频率都较高，提前预定的时间都较短，决策一般都较快（日均访问数少），订单取消率较高，可以分析出这类客户商务属性偏重，可能随时要出差，因此都不会提前预定，可能出差随时会取消，因此酒店取消率也会更高一点。sid的值较大，说明高价值客户群体多集中在老客户中。价格敏感度较高，说明可能比较要求性价比。h值非常小，可能访问和预定时间多在半夜或是清晨。
-这部分客户对于我们而言是非常重要的，因此我们需要对其实施个性化的营销：
-1、为客户提供更多差旅酒店信息。
-2、多推荐口碑好、性价比高的商务酒店。
-3、推荐时间集中在半夜或是清晨。
-- 中等价值用户分析（1类用户）
-消费水平和客户价值都偏低，对酒店品质也不太追求，访问和预定频率也都较高，提前预定的时间是三类中最长的，最值得注意的是，0类客户中有两个颜色非常深的蓝色格子，是用户决策和近3个月的日均访问数。可以看出，这类客户通常很喜欢逛酒店界面，在决定要订哪家酒店前通常会花费非常多的时间进行浏览才能做出选择，并且一般都会提前很久订好房。我们可以给这类客户打上“谨慎”的标签。我们可以合理推断，这一类客户，可能预定酒店的目的多为出门旅行。
-针对这部分客户，我们需要：
-1、尽可能多地进行推送，因为此类客户通常比较喜欢浏览。
-2、推送当地旅游资讯，因为这类客户旅游出行的概率较大。
-3、多推荐价格相对实惠的酒店。
-- 低价值用户分析（0类用户）
-消费水平和客户价值极低，对酒店品质不追求，偏好价格较低，决策时间很短，访问和预定频率很低，sid值很低，说明新客户居多。
-针对这部分客户，我们需要：
-1、不建议花费过多营销成本，但因为新用户居多，属于潜在客户，可以维持服务推送。
-2、推送的内容应多为大减价、大酬宾、跳楼价之类的。
-3、此类用户占比居多，可进一步进行下沉分析，开拓新的市场。
+### 七、营销建议
+##### 7.1 营销目标客户群体
+- 年龄：从营销结果来看，20岁以下或60岁以上的群体似乎更容易营销成功，因此可以考虑将他们作为重点的营销对象。
+- 职业：学生及退休人员更加可能有定期存款，同时在营销方面取得成功，蓝领、企业家、服务者、技术员不容易推销成功，应当尽量避免向这一类人进行推销。
+- 住房贷款：定期存款业务和住房贷款成负若相关性，可以认为拥有住房贷款，则比较不容易开设定期存款业务。同时，开设有住房贷款的人群整体盈余情况会比没有住房贷款的人更差。所以在下次营销中心可以面向盈余情况良好且没有住房贷款的人群。
+- 通话时间：通话时间越长，客户的营销成功率明显增加，因此可以将通话时间高于平均值的客户设为目标群体。
+##### 7.2 营销策略
+- 营销月份：营销活动主要集中在8月、5月、2月，同时5月、2月的营销都很成功，具体原因尚不知晓，但是下一次营销活动可以参考这几个月的营销经验。
+- 通话时间：通话时间的长段与用户业务率呈正相关关系，因此可以考虑通过在通话期间为潜在客户提供有趣的问卷等方式，来增加通话时间，并最终提升营销活动效率。
