@@ -30,7 +30,7 @@ df.head()
 
 ![image.png](https://upload-images.jianshu.io/upload_images/18032205-595c4aadec379be8.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-数据维度为689945*51，label为标签列，1为未流失，0为流失（等会儿再确认），samplied是id列？因为没有重复项，其余有49个特征项，下面将针对部分关键特征进行分析。
+数据维度为689945*51，label为标签列，1为未流失，0为流失，samplied是id列。其余有49个特征项，下面将针对部分关键特征进行分析。
 - d:预定日期
 - arrival:入住日期
 - h:访问时间段
