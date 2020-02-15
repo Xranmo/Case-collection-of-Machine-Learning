@@ -1,6 +1,7 @@
 **数据来源kaggle(uci数据集)： [https://www.kaggle.com/janiobachmann/bank-marketing-dataset/kernels]**
 
->目录： 
+>目录：
+
 0 项目概述 
 一、业务分析 
 　　1.1 基本属性 
